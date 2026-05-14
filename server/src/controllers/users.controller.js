@@ -3,7 +3,7 @@ const pool = require('../config/db')
 
 async function getAll(req, res) {
   try {
-    const result = await pool.query('SELECT id, name, email, role, created_at FROM users ORDER BY name')
+    const result = await pool.query('SELECT id, name, email, role, phone, created_at FROM users ORDER BY name')
     res.json(result.rows)
   } catch (err) {
     res.status(500).json({ error: 'Error interno del servidor' })
@@ -13,7 +13,7 @@ async function getAll(req, res) {
 async function getById(req, res) {
   try {
     const result = await pool.query(
-      'SELECT id, name, email, role, created_at FROM users WHERE id = $1',
+      'SELECT id, name, email, role, phone, created_at FROM users WHERE id = $1',
       [req.params.id]
     )
     if (!result.rows[0]) return res.status(404).json({ error: 'Usuario no encontrado' })
@@ -24,7 +24,7 @@ async function getById(req, res) {
 }
 
 async function create(req, res) {
-  const { name, email, password, role } = req.body
+  const { name, email, password, role, phone } = req.body
   if (!name || !email || !password) {
     return res.status(400).json({ error: 'Nombre, email y contraseña son requeridos' })
   }
@@ -32,8 +32,8 @@ async function create(req, res) {
   try {
     const hashed = await bcrypt.hash(password, 10)
     const result = await pool.query(
-      'INSERT INTO users (name, email, password, role) VALUES ($1, $2, $3, $4) RETURNING id, name, email, role',
-      [name, email, hashed, role || 'user']
+      'INSERT INTO users (name, email, password, role, phone) VALUES ($1, $2, $3, $4, $5) RETURNING id, name, email, role, phone',
+      [name, email, hashed, role || 'user', req.body.phone || null]
     )
     res.status(201).json(result.rows[0])
   } catch (err) {
@@ -43,15 +43,15 @@ async function create(req, res) {
 }
 
 async function update(req, res) {
-  const { name, email, role } = req.body
+  const { name, email, role, phone } = req.body
 
   try {
     const current = await pool.query('SELECT * FROM users WHERE id = $1', [req.params.id])
     if (!current.rows[0]) return res.status(404).json({ error: 'Usuario no encontrado' })
 
     const result = await pool.query(
-      'UPDATE users SET name = $1, email = $2, role = $3 WHERE id = $4 RETURNING id, name, email, role',
-      [name ?? current.rows[0].name, email ?? current.rows[0].email, role ?? current.rows[0].role, req.params.id]
+      'UPDATE users SET name = $1, email = $2, role = $3, phone = $4 WHERE id = $5 RETURNING id, name, email, role, phone',
+      [name ?? current.rows[0].name, email ?? current.rows[0].email, role ?? current.rows[0].role, phone ?? current.rows[0].phone, req.params.id]
     )
     res.json(result.rows[0])
   } catch (err) {
